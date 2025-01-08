@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lesson Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 90px;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f3f4f6;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            position: relative;
+        }
+
+        .circle {
+            background: linear-gradient(to bottom right, red, green, yellow);
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            position: absolute;
+            left: 0;
+        }
+
+        .score {
+            margin-top: 20px;
+            font-size: 50px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        @keyframes rotate-and-move {
+            0% {
+                transform: translateX(0) rotate(0deg);
+            }
+            100% {
+                transform: translateX(calc(100vw - 96px)) rotate(-360deg); /* Adjust for the circle's width */
+            }
+        }
+
+        .animate-move {
+            animation: rotate-and-move 2s linear infinite;
+        }
+
+        @media (max-width: 600px) {
+            .circle {
+                width: 72px;
+                height: 72px;
+                font-size: 18px;
+            }
+
+            @keyframes rotate-and-move {
+                0% {
+                    transform: translateX(0) rotate(0deg);
+                }
+                100% {
+                    transform: translateX(calc(100vw - 72px)) rotate(-360deg); 
+                }
+            }
+
+            .score {
+                font-size: 36px;
+            }
+
+            #timer {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h3>Double tap ball to start</h3>
+    <div class="container">
+        <div class="circle" id="circle"></div>
+    </div>
+    
+    <div class="score" id="score">Score: 0</div>
+    <div id="timer">10s left</div>
+    
+    <script>
+        let isAnimating = false;
+        let score = 0;
+        let time = 10;
+        let timerInterval;
+        let animationInterval;
+        let gameStarted = false;
+        
+        const circle = document.getElementById('circle');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        
+        function startGame() {
+            gameStarted = true;
+            isAnimating = false;
+            score = 0;
+            time = 10;
+            scoreDisplay.textContent = 'Score: ' + score;
+            timerDisplay.textContent = time + 's left';
+            
+            if (animationInterval) {
+                circle.classList.remove('animate-move');
+                clearInterval(animationInterval);
+            }
+            
+            timerInterval = setInterval(() => {
+                time--;
+                timerDisplay.textContent = time + 's left';
+                if (time <= 0) {
+                    clearInterval(timerInterval);
+                    clearInterval(animationInterval);
+                    circle.classList.remove('animate-move');
+                    alert('Game Over! Please refresh to restart Final Score: ' + score);
+                }
+            }, 1000);
+        }
+        
+        circle.addEventListener('click', () => {
+            if (!gameStarted) {
+                startGame();
+            } else if (time > 0) {
+                if (isAnimating) {
+                    score++;
+                    scoreDisplay.textContent = 'Score: ' + score;
+                } else {
+                    isAnimating = true;
+                    circle.classList.add('animate-move');
+                }
+            }
+        });
+        
+        // Optional: Ensure the timer starts and the game is not already running when the page loads.
+        window.onload = () => {
+            gameStarted = false;
+        };
+    </script>
+</body>
+</html>
