@@ -3,154 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lesson Game</title>
+    <title>Creative Bouncing Ball in Rotating Hexagon</title>
     <style>
-        body {
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 90px;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f3f4f6;
-            font-family: Arial, sans-serif;
-        }
-
-        .container {
-            width: 100%;
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            position: relative;
-        }
-
-        .circle {
-            background: linear-gradient(to bottom right, red, green, yellow);
-            width: 96px;
-            height: 96px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            position: absolute;
-            left: 0;
-        }
-
-        .score {
-            margin-top: 20px;
-            font-size: 50px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        @keyframes rotate-and-move {
-            0% {
-                transform: translateX(0) rotate(0deg);
-            }
-            100% {
-                transform: translateX(calc(100vw - 96px)) rotate(-360deg); /* Adjust for the circle's width */
-            }
-        }
-
-        .animate-move {
-            animation: rotate-and-move 2s linear infinite;
-        }
-
-        @media (max-width: 600px) {
-            .circle {
-                width: 72px;
-                height: 72px;
-                font-size: 18px;
-            }
-
-            @keyframes rotate-and-move {
-                0% {
-                    transform: translateX(0) rotate(0deg);
-                }
-                100% {
-                    transform: translateX(calc(100vw - 72px)) rotate(-360deg); 
-                }
-            }
-
-            .score {
-                font-size: 36px;
-            }
-
-            #timer {
-                font-size: 20px;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #0a0a0a; }
+        canvas { background: #111; }
     </style>
 </head>
 <body>
-    <h3>Double tap ball to start</h3>
-    <div class="container">
-        <div class="circle" id="circle"></div>
-    </div>
-    
-    <div class="score" id="score">Score: 0</div>
-    <div id="timer">10s left</div>
-    
+    <canvas id="canvas"></canvas>
+
     <script>
-        let isAnimating = false;
-        let score = 0;
-        let time = 10;
-        let timerInterval;
-        let animationInterval;
-        let gameStarted = false;
-        
-        const circle = document.getElementById('circle');
-        const scoreDisplay = document.getElementById('score');
-        const timerDisplay = document.getElementById('timer');
-        
-        function startGame() {
-            gameStarted = true;
-            isAnimating = false;
-            score = 0;
-            time = 10;
-            scoreDisplay.textContent = 'Score: ' + score;
-            timerDisplay.textContent = time + 's left';
-            
-            if (animationInterval) {
-                circle.classList.remove('animate-move');
-                clearInterval(animationInterval);
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const hexagonRadius = 200;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const ballRadius = 10;
+        let rotationAngle = 0;
+        let rotationSpeed = 0.02;
+        let ballPath = [];
+        let colorIndex = 0;
+        const colors = ["#ff4757", "#1e90ff", "#2ed573", "#ff7f50", "#a29bfe"];
+
+        let ball = { x: centerX, y: centerY, vx: 3, vy: -2 };
+
+        function getHexagonVertices(angleOffset = 0) {
+            let vertices = [];
+            for (let i = 0; i < 6; i++) {
+                let angle = (Math.PI / 3) * i + angleOffset;
+                let x = centerX + hexagonRadius * Math.cos(angle);
+                let y = centerY + hexagonRadius * Math.sin(angle);
+                vertices.push({ x, y });
             }
-            
-            timerInterval = setInterval(() => {
-                time--;
-                timerDisplay.textContent = time + 's left';
-                if (time <= 0) {
-                    clearInterval(timerInterval);
-                    clearInterval(animationInterval);
-                    circle.classList.remove('animate-move');
-                    alert('Game Over! Please refresh to restart Final Score: ' + score);
-                }
-            }, 1000);
+            return vertices;
         }
-        
-        circle.addEventListener('click', () => {
-            if (!gameStarted) {
-                startGame();
-            } else if (time > 0) {
-                if (isAnimating) {
-                    score++;
-                    scoreDisplay.textContent = 'Score: ' + score;
-                } else {
-                    isAnimating = true;
-                    circle.classList.add('animate-move');
+
+        function drawHexagon(vertices) {
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            vertices.forEach((v, i) => {
+                if (i === 0) ctx.moveTo(v.x, v.y);
+                else ctx.lineTo(v.x, v.y);
+            });
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        function drawBallTrail() {
+            for (let i = 0; i < ballPath.length - 1; i++) {
+                ctx.strokeStyle = `rgba(255, 165, 0, ${i / ballPath.length})`; // Fading orange trail
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(ballPath[i].x, ballPath[i].y);
+                ctx.lineTo(ballPath[i + 1].x, ballPath[i + 1].y);
+                ctx.stroke();
+            }
+        }
+
+        function drawBall() {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = colors[colorIndex];
+            ctx.fillStyle = colors[colorIndex];
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            let A = px - x1;
+            let B = py - y1;
+            let C = x2 - x1;
+            let D = y2 - y1;
+            let dot = A * C + B * D;
+            let len_sq = C * C + D * D;
+            let param = len_sq !== 0 ? dot / len_sq : -1;
+            let xx, yy;
+
+            if (param < 0) { xx = x1; yy = y1; } 
+            else if (param > 1) { xx = x2; yy = y2; } 
+            else { xx = x1 + param * C; yy = y1 + param * D; }
+
+            let dx = px - xx;
+            let dy = py - yy;
+            return { distance: Math.sqrt(dx * dx + dy * dy), normal: { x: dx, y: dy } };
+        }
+
+        function checkCollision(vertices) {
+            for (let i = 0; i < 6; i++) {
+                let x1 = vertices[i].x, y1 = vertices[i].y;
+                let x2 = vertices[(i + 1) % 6].x, y2 = vertices[(i + 1) % 6].y;
+
+                let { distance, normal } = pointToLineDistance(ball.x, ball.y, x1, y1, x2, y2);
+                if (distance < ballRadius) {
+                    let normalMag = Math.sqrt(normal.x ** 2 + normal.y ** 2);
+                    normal.x /= normalMag;
+                    normal.y /= normalMag;
+
+                    let dot = ball.vx * normal.x + ball.vy * normal.y;
+                    ball.vx -= 2 * dot * normal.x;
+                    ball.vy -= 2 * dot * normal.y;
+
+                    ball.x += normal.x * (ballRadius - distance);
+                    ball.y += normal.y * (ballRadius - distance);
+
+                    // Store bouncing points in trail
+                    ballPath.push({ x: ball.x, y: ball.y });
+                    
+                    // Change ball color on every bounce
+                    colorIndex = (colorIndex + 1) % colors.length;
                 }
             }
-        });
-        
-        // Optional: Ensure the timer starts and the game is not already running when the page loads.
-        window.onload = () => {
-            gameStarted = false;
-        };
+        }
+
+        function updateBall() {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ballPath.push({ x: ball.x, y: ball.y });
+
+            // Limit trail length for performance
+            if (ballPath.length > 100) {
+                ballPath.shift();
+            }
+        }
+
+        function animate() {
+            // Clear only the hexagon area, keeping the fading trail
+            ctx.fillStyle = "rgba(10, 10, 10, 0.3)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            rotationAngle += rotationSpeed;
+            let vertices = getHexagonVertices(rotationAngle);
+
+            drawHexagon(vertices);
+            drawBallTrail();
+            updateBall();
+            checkCollision(vertices);
+            drawBall();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
     </script>
 </body>
 </html>
